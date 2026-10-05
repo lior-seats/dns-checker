@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DNS Record Checker — Instantly See All DNS Records for Any Domain</title>
+  <meta name="description" content="Free tool to look up A, AAAA, MX, TXT, CNAME, and NS records for any domain. Uses Cloudflare DNS. No signup required." />
+  <meta property="og:title" content="DNS Record Checker — Instantly See All DNS Records for Any Domain" />
+  <meta property="og:description" content="Free tool to look up A, AAAA, MX, TXT, CNAME, and NS records for any domain. Uses Cloudflare DNS. No signup required." />
+  <meta property="og:url" content="https://lior-seats.github.io/dns-checker/" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="DNS Record Checker — Instantly See All DNS Records for Any Domain" />
+  <meta name="twitter:description" content="Free tool to look up A, AAAA, MX, TXT, CNAME, and NS records for any domain. Uses Cloudflare DNS. No signup required." />
+  <link rel="canonical" href="https://lior-seats.github.io/dns-checker/" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a202c;
+      border-bottom: 1px solid #2d3748;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    header .logo {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #6366f1;
+      letter-spacing: -0.5px;
+    }
+    header .tagline {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      font-weight: 700;
+      color: #f7fafc;
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+    .subtitle {
+      color: #a0aec0;
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+    .search-box {
+      background: #1a202c;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .input-row input {
+      flex: 1;
+      background: #0f1117;
+      border: 1px solid #4a5568;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      color: #f7fafc;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row input::placeholder { color: #4a5568; }
+    .input-row input:focus { border-color: #6366f1; }
+    .btn-check {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn-check:hover { background: #4f46e5; }
+    .btn-check:active { transform: scale(0.98); }
+    .btn-check:disabled { background: #4a5568; cursor: not-allowed; }
+    .error-msg {
+      color: #fc8181;
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      display: none;
+    }
+    #spinner {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+      color: #718096;
+    }
+    .spinner-ring {
+      display: inline-block;
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid #2d3748;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #results { display: none; }
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .results-domain {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #f7fafc;
+    }
+    .results-count {
+      font-size: 0.85rem;
+      color: #718096;
+    }
+    .type-section {
+      background: #1a202c;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .type-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: #2d3748;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .type-badge {
+      background: #6366f1;
+      color: #fff;
+      border-radius: 5px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .type-count {
+      font-size: 0.8rem;
+      color: #a0aec0;
+      margin-left: auto;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #718096;
+      border-bottom: 1px solid #2d3748;
+      background: #1a202c;
+    }
+    td {
+      padding: 0.65rem 1rem;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      border-bottom: 1px solid #2d3748;
+      word-break: break-all;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: #a0aec0; font-size: 0.82rem; }
+    td.value { color: #90cdf4; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.83rem; }
+    td.ttl { color: #718096; font-size: 0.82rem; white-space: nowrap; }
+    .nxdomain {
+      padding: 0.85rem 1rem;
+      color: #718096;
+      font-size: 0.88rem;
+      font-style: italic;
+    }
+    .share-row {
+      display: flex;
+      gap: 0.75rem;
+      margin: 1.5rem 0 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-share {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #4a5568;
+      background: #1a202c;
+      color: #e2e8f0;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-share:hover { border-color: #6366f1; background: #2d3748; }
+    .btn-copy.copied { border-color: #48bb78; color: #48bb78; }
+    .cta-box {
+      background: linear-gradient(135deg, #1a1a3e 0%, #1a202c 100%);
+      border: 1px solid #4a5568;
+      border-left: 3px solid #6366f1;
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .cta-text { font-size: 0.95rem; color: #e2e8f0; }
+    .cta-text strong { color: #f7fafc; }
+    .cta-link {
+      display: inline-block;
+      background: #6366f1;
+      color: #fff;
+      text-decoration: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .cta-link:hover { background: #4f46e5; }
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      color: #4a5568;
+      font-size: 0.82rem;
+      border-top: 1px solid #1a202c;
+    }
+    @media (max-width: 600px) {
+      .input-row { flex-direction: column; }
+      .cta-box { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🔍 DNS Checker</div>
+    <div class="tagline">Powered by Cloudflare DNS-over-HTTPS</div>
+  </header>
+
+  <main>
+    <h1>DNS Record Checker</h1>
+    <p class="subtitle">Instantly look up A, AAAA, MX, TXT, CNAME, and NS records for any domain — no signup required.</p>
+
+    <div class="search-box">
+      <div class="input-row">
+        <input type="text" id="domainInput" placeholder="github.com" autocomplete="off" autocapitalize="none" spellcheck="false" />
+        <button class="btn-check" id="checkBtn" onclick="checkDNS()">Check DNS</button>
+      </div>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+
+    <div id="spinner">
+      <span class="spinner-ring"></span>Looking up DNS records…
+    </div>
+
+    <div id="results">
+      <div class="results-header">
+        <div class="results-domain" id="resultsDomain"></div>
+        <div class="results-count" id="resultsCount"></div>
+      </div>
+      <div id="recordsContainer"></div>
+
+      <div class="share-row" id="shareRow">
+        <a id="twitterShare" class="btn-share" href="#" target="_blank" rel="noopener">
+          𝕏 Share
+        </a>
+        <button class="btn-share btn-copy" id="copyBtn" onclick="copyRecords()">
+          📋 Copy records
+        </button>
+      </div>
+
+      <div class="cta-box">
+        <div class="cta-text">
+          <strong>Want instant alerts when your DNS records change?</strong><br />
+          DNSWatch monitors your domains 24/7 and notifies you the moment anything changes.
+        </div>
+        <a href="https://lior-seats.github.io/dnswatch-waitlist/" class="cta-link">Join DNSWatch waitlist →</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    DNS Checker uses Cloudflare DNS-over-HTTPS. No data is stored. &nbsp;|&nbsp;
+    <a href="https://lior-seats.github.io/dnswatch-waitlist/" style="color:#6366f1;text-decoration:none;">DNSWatch — DNS Change Alerts</a>
+  </footer>
+
+  <script>
+    const TYPES = ['A', 'AAAA', 'MX', 'TXT', 'CNAME', 'NS'];
+    let lastDomain = '';
+    let lastSummary = '';
+
+    document.getElementById('domainInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') checkDNS();
+    });
+
+    function normalizeDomain(input) {
+      return input.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    }
+
+    function formatValue(record, type) {
+      switch (type) {
+        case 'MX': return `${record.data} (priority ${record.priority ?? '?'})`;
+        default: return record.data ?? '';
+      }
+    }
+
+    function formatTTL(ttl) {
+      if (!ttl && ttl !== 0) return '—';
+      if (ttl < 60) return `${ttl}s`;
+      if (ttl < 3600) return `${Math.round(ttl / 60)}m`;
+      return `${Math.round(ttl / 3600)}h`;
+    }
+
+    async function checkDNS() {
+      const raw = document.getElementById('domainInput').value;
+      const domain = normalizeDomain(raw);
+
+      const errorEl = document.getElementById('errorMsg');
+      errorEl.style.display = 'none';
+
+      if (!domain || domain.length < 2 || !domain.includes('.')) {
+        errorEl.textContent = 'Please enter a valid domain name, e.g. github.com';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const btn = document.getElementById('checkBtn');
+      btn.disabled = true;
+      btn.textContent = 'Checking…';
+      document.getElementById('spinner').style.display = 'block';
+      document.getElementById('results').style.display = 'none';
+
+      // Hit pixel
+      try { fetch('https://agent-control-plane-w3m9.onrender.com/api/hit?page=dns-checker', { mode: 'no-cors' }); } catch(e) {}
+
+      try {
+        const results = await Promise.all(
+          TYPES.map(type =>
+            fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=${type}`, {
+              headers: { 'Accept': 'application/dns-json' }
+            })
+            .then(r => r.ok ? r.json() : { Status: -1, Answer: [] })
+            .catch(() => ({ Status: -1, Answer: [] }))
+          )
+        );
+
+        document.getElementById('spinner').style.display = 'none';
+        renderResults(domain, results);
+      } catch(err) {
+        document.getElementById('spinner').style.display = 'none';
+        errorEl.textContent = 'Network error — please check your connection and try again.';
+        errorEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Check DNS';
+      }
+    }
+
+    function renderResults(domain, results) {
+      lastDomain = domain;
+      let totalRecords = 0;
+      const summaryLines = [`DNS records for ${domain}\n`];
+      let container = '';
+
+      TYPES.forEach((type, i) => {
+        const data = results[i];
+        const answers = (data.Answer || []).filter(r => r.type !== undefined);
+        // Filter to only matching type answers (DoH returns numeric type codes)
+        // Type codes: A=1, AAAA=28, MX=15, TXT=16, CNAME=5, NS=2
+        const typeCodes = { A: 1, AAAA: 28, MX: 15, TXT: 16, CNAME: 5, NS: 2 };
+        const code = typeCodes[type];
+        const filtered = answers.filter(r => r.type === code);
+
+        if (filtered.length > 0) {
+          totalRecords += filtered.length;
+          summaryLines.push(`--- ${type} ---`);
+          container += `
+            <div class="type-section">
+              <div class="type-header">
+                <span class="type-badge">${type}</span>
+                <span style="color:#e2e8f0">Records</span>
+                <span class="type-count">${filtered.length} record${filtered.length !== 1 ? 's' : ''}</span>
+              </div>
+              <table>
+                <thead><tr><th>Name</th><th>Value</th><th>TTL</th></tr></thead>
+                <tbody>
+          `;
+          filtered.forEach(r => {
+            const val = type === 'TXT' ? (r.data || '').replace(/^"|"$/g, '') : (r.data || '');
+            const display = type === 'MX' ? `${val} (priority ${r.priority ?? r.data?.split(' ')[0] ?? '?'})` : val;
+            summaryLines.push(`  ${r.name}  →  ${display}  (TTL: ${r.TTL ?? r.ttl ?? '?'}s)`);
+            container += `
+              <tr>
+                <td>${escHtml(r.name || domain)}</td>
+                <td class="value">${escHtml(display)}</td>
+                <td class="ttl">${formatTTL(r.TTL ?? r.ttl)}</td>
+              </tr>
+            `;
+          });
+          container += '</tbody></table></div>';
+        } else {
+          const isNx = data.Status === 3;
+          summaryLines.push(`--- ${type} --- No records found`);
+          container += `
+            <div class="type-section">
+              <div class="type-header">
+                <span class="type-badge" style="background:#4a5568">${type}</span>
+                <span style="color:#718096">Records</span>
+                <span class="type-count">0</span>
+              </div>
+              <div class="nxdomain">${isNx ? 'Domain not found (NXDOMAIN)' : 'No records found for this type'}</div>
+            </div>
+          `;
+        }
+        summaryLines.push('');
+      });
+
+      lastSummary = summaryLines.join('\n');
+
+      document.getElementById('resultsDomain').textContent = domain;
+      document.getElementById('resultsCount').textContent = `${totalRecords} total record${totalRecords !== 1 ? 's' : ''}`;
+      document.getElementById('recordsContainer').innerHTML = container;
+
+      // Twitter share
+      const tweet = encodeURIComponent(
+        `I checked DNS for ${domain} — ${totalRecords} records found. Check yours: https://lior-seats.github.io/dns-checker/ #DNS #devtools`
+      );
+      document.getElementById('twitterShare').href = `https://twitter.com/intent/tweet?text=${tweet}`;
+
+      // Reset copy button
+      const copyBtn = document.getElementById('copyBtn');
+      copyBtn.textContent = '📋 Copy records';
+      copyBtn.classList.remove('copied');
+
+      document.getElementById('results').style.display = 'block';
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function copyRecords() {
+      const btn = document.getElementById('copyBtn');
+      try {
+        await navigator.clipboard.writeText(lastSummary);
+        btn.textContent = '✅ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '📋 Copy records';
+          btn.classList.remove('copied');
+        }, 1800);
+      } catch(e) {
+        btn.textContent = '⚠️ Copy failed';
+        setTimeout(() => { btn.textContent = '📋 Copy records'; }, 1800);
+      }
+    }
+  </script>
+</body>
+</html>
