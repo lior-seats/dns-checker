@@ -245,6 +245,11 @@
       transition: background 0.2s;
     }
     .cta-link:hover { background: #4f46e5; }
+    .monitor-btn-wrap { margin-top: 1rem; }
+    .monitor-dns-btn { width: 100%; padding: 0.75rem 1rem; background: #6366f1; color: #fff; border: none; border-radius: 9px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.2s; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .monitor-dns-btn:hover { background: #4f46e5; }
+    .monitor-dns-btn:disabled { background: #4a5568; cursor: not-allowed; }
+    .monitor-dns-msg { font-size: 0.8rem; color: #94a3b8; margin-top: 0.4rem; min-height: 1rem; }
     footer {
       text-align: center;
       padding: 2rem 1.5rem;
@@ -311,6 +316,13 @@
         </button>
       </div>
 
+      <div class="monitor-btn-wrap">
+        <button class="monitor-dns-btn" id="monitorDnsBtn" onclick="monitorDNS()" style="display:none">
+          <span>📡 Monitor <span id="monitorDnsDomain">this domain</span> for DNS changes</span>
+          <span style="font-size:.82rem;font-weight:400;opacity:.85">$9/mo →</span>
+        </button>
+        <div class="monitor-dns-msg" id="monitorDnsMsg"></div>
+      </div>
       <div class="cta-box">
         <div class="cta-text">
           <strong>Want instant alerts when your DNS records change?</strong><br />
@@ -475,6 +487,14 @@
       copyBtn.classList.remove('copied');
 
       document.getElementById('results').style.display = 'block';
+      // Monitor button
+      document.getElementById('monitorDnsDomain').textContent = domain;
+      const mBtn = document.getElementById('monitorDnsBtn');
+      mBtn.dataset.domain = domain;
+      mBtn.disabled = false;
+      mBtn.querySelector('span:first-child').textContent = '\uD83D\uDCE1 Monitor ' + domain + ' for DNS changes';
+      mBtn.style.display = 'flex';
+      document.getElementById('monitorDnsMsg').textContent = '';
     }
 
     function escHtml(str) {
@@ -483,6 +503,35 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    async function monitorDNS() {
+      const domain = document.getElementById('monitorDnsBtn').dataset.domain;
+      const btn = document.getElementById('monitorDnsBtn');
+      const msg = document.getElementById('monitorDnsMsg');
+      btn.disabled = true;
+      btn.querySelector('span:first-child').textContent = 'Connecting\u2026';
+      try {
+        const res = await fetch('https://agent-control-plane-w3m9.onrender.com/api/checkout/create-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product: 'dnswatch', domain })
+        });
+        const data = await res.json();
+        if (res.status === 503 || !data.ok) {
+          msg.style.color = '#94a3b8';
+          msg.innerHTML = 'Payments launching soon \u2014 <a href="https://lior-seats.github.io/dnswatch-waitlist/" style="color:#6366f1">join the waitlist</a>.';
+          btn.querySelector('span:first-child').textContent = '\uD83D\uDCE1 Monitor ' + domain + ' for DNS changes';
+          btn.disabled = false;
+        } else if (data.url) {
+          window.location.href = data.url;
+        } else { throw new Error('No URL'); }
+      } catch {
+        msg.style.color = '#94a3b8';
+        msg.innerHTML = 'Payments launching soon \u2014 <a href="https://lior-seats.github.io/dnswatch-waitlist/" style="color:#6366f1">join the waitlist</a>.';
+        btn.querySelector('span:first-child').textContent = '\uD83D\uDCE1 Monitor ' + domain + ' for DNS changes';
+        btn.disabled = false;
+      }
     }
 
     async function copyRecords() {
